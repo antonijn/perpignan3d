@@ -1,0 +1,3 @@
+[submodule "perpignan"]
+	path = perpignan
+	url = https://github.com/antonijn/perpignan.git
