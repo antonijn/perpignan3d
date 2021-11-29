@@ -7,8 +7,11 @@ from panda3d.core import AmbientLight, DirectionalLight, LightAttrib
 from panda3d.core import LPoint3, LVector3, BitMask32
 from panda3d.core import OrthographicLens
 from panda3d.core import NodePath
+from panda3d.core import loadPrcFileData
 from direct.showbase import DirectObject
 from enum import Enum
+
+loadPrcFileData('', 'framebuffer-srgb true')
 
 def tile_to_node(tile, scene):
     edges = []
@@ -196,12 +199,15 @@ class MyApp(ShowBase):
         lens = OrthographicLens()
         #lens.setFilmSize(2, 2)
         self.cam.node().setLens(lens)
-        self.cam.lookAt(LVector3(-8, 4, -16))
+        self.cam.setPos(8, -4, 12)
+        self.cam.lookAt(LVector3(0, 0, 0))
 
         self.accept(self.win.getWindowEvent(), self.onWindowEvent)
         self.accept('escape', sys.exit)
         self.accept('k', self.nextTile)
         self.accept('j', self.prevTile)
+        self.accept('wheel_up', self.rotCW)
+        self.accept('wheel_down', self.rotCCW)
 
     def onWindowEvent(self, window):
         if window.isClosed():
@@ -210,7 +216,7 @@ class MyApp(ShowBase):
         width = window.getProperties().getXSize()
         height = window.getProperties().getYSize()
         aspect = width / height
-        fw, fh = 3, 3
+        fw, fh = 6, 6
         if width > height:
             fw *= aspect
         else:
@@ -233,15 +239,23 @@ class MyApp(ShowBase):
         tile = self.perp.deck[self.tile]
 
         self.tnode = tile_to_node(tile, self.scene)
-        self.tnode.setPos(-8, 4, -16)
+        #self.tnode.setPos(-8, 4, -12)
         self.tnode.reparentTo(self.render)
+
+    def rotCW(self):
+        h = self.tnode.getH(self.tnode)
+        self.tnode.setH(self.tnode, h - 90)
+
+    def rotCCW(self):
+        h = self.tnode.getH(self.tnode)
+        self.tnode.setH(self.tnode, h + 90)
 
     def setupLights(self):  # This function sets up some default lighting
         ambientLight = AmbientLight("ambientLight")
-        ambientLight.setColor((.8, .8, .8, 1))
+        ambientLight.setColor((.7, .7, .7, 1))
         directionalLight = DirectionalLight("directionalLight")
         directionalLight.setDirection(LVector3(0, 45, -45))
-        directionalLight.setColor((0.2, 0.2, 0.2, 1))
+        directionalLight.setColor((.3, .3, .3, 1))
         render.setLight(render.attachNewNode(directionalLight))
         render.setLight(render.attachNewNode(ambientLight))
 
