@@ -16,7 +16,7 @@ from enum import Enum
 
 loadPrcFileData('', 'framebuffer-srgb true')
 
-def tile_to_node(tile, scene):
+def tile_to_node(tile, scene, player_color=(1,1,1)):
     edges = []
     features = {}
     for i in range(4):
@@ -164,14 +164,27 @@ def tile_to_node(tile, scene):
             floor_inst.instanceTo(floor)
 
     if tile.slots[12].feature is not None:
-        middle_inst = scene.find('Mill')
-        if None in edges:
-            water_mill = scene.find('WaterMill')
-            if not middle_inst.isEmpty():
-                middle_inst = water_mill
+        mill = node.attachNewNode('Mill')
+
+        mill_base = mill.attachNewNode('MillBase')
+        mill_base_inst = scene.find('MillBase')
+        mill_base_inst.instanceTo(mill_base)
+
+        mill_roof = mill_base.attachNewNode('MillRoof')
+        mill_roof_inst = scene.find('MillRoof')
+        mill_roof_inst.instanceTo(mill_roof)
+
+        mill_shaft = mill_roof.attachNewNode('MillShaft')
+        mill_shaft_inst = scene.find('Shaft')
+        mill_shaft_inst.instanceTo(mill_shaft)
+
+        mill_flag = mill_shaft.attachNewNode('MillFlag')
+        mill_flag_inst = scene.find('MillFlag')
+        mill_flag_inst.instanceTo(mill_flag)
 
         if p.Road in edges:
-            middle_rot = 90 * (1 - edges.index(p.Road))
+            h = 90 * (1 - edges.index(p.Road))
+            mill.setH(mill, h)
 
     elif middle_inst is None and p.Road in edges and not has_crossroads:
         middle_inst = scene.find('Tree')
@@ -181,8 +194,30 @@ def tile_to_node(tile, scene):
         middle_inst.instanceTo(middle)
         middle.setH(middle, middle_rot)
 
+    # add the indicators (i.e. where the sheeple might be placed
+    indicator_inst = scene.find('Indicator')
+
+    indicator_points = [
+        Vec3(-0.38,  0.80, 0), Vec3( 0.0,  0.8, 0), Vec3( 0.38,  0.80, 0),
+        Vec3( 0.80,  0.38, 0), Vec3( 0.8,  0.0, 0), Vec3( 0.80, -0.38, 0),
+        Vec3( 0.38, -0.80, 0), Vec3( 0.0, -0.8, 0), Vec3(-0.38, -0.80, 0),
+        Vec3(-0.80, -0.38, 0), Vec3(-0.8,  0.0, 0), Vec3(-0.80,  0.38, 0),
+        Vec3( 0.00,  0.00, 0.58)
+    ]
+
+    player_r, player_g, player_b = player_color
+    slots = node.attachNewNode('Slots')
+    slots.setColorScale(player_r, player_g, player_b, 1)
+    for i, point in enumerate(indicator_points):
+        indicator = slots.attachNewNode(f'Slot{i}')
+        indicator_inst.instanceTo(indicator)
+        indicator.setPos(point)
+
+    slots.hide()
+
     node.setScale(0.5, 0.5, 0.5)
 
+    tile.node = node
     return node
 
 class MyPlayer(p.Player):
@@ -316,6 +351,7 @@ class MyApp(ShowBase):
     def __init__(self, perp):
         ShowBase.__init__(self)
         self.perp = perp
+        perp.next_player()
 
         self.setBackgroundColor(0.392, 0.584, 0.929)
         tiles_path = os.path.join(os.path.dirname(__file__), 'tiles.gltf')
@@ -332,17 +368,16 @@ class MyApp(ShowBase):
         self.cam.node().setLens(self.camLens)
         self.focus = Vec3(42, 42, 0)
         self.tiles_placed = 1
-        # this initial setting is meaningless; see next_player()
+        # this initial setting is meaningless; see next_ghost()
         self.focus_radius = 1
 
         self.accept(self.win.getWindowEvent(), self.onWindowEvent)
         self.accept('escape', sys.exit)
-        self.accept('tile_placed', self.next_player)
+        self.accept('tile_placed', self.next_ghost)
         self.ghost = None
-        self.next_player()
+        self.next_ghost()
 
-    def next_player(self):
-        self.perp.next_player()
+    def next_ghost(self):
         if self.ghost is not None:
             self.ghost.remove()
             x, y = self.ghost.cursor
